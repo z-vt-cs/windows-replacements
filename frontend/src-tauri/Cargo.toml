@@ -1,0 +1,24 @@
+[package]
+name = "taskbar-project"
+version = "0.1.0"
+description = "Tauri shell for the taskbar project"
+authors = ["you"]
+edition = "2024"
+
+[package.metadata]
+
+[lib]
+name = "taskbar_project_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+windows = { version = "0.48.0", 
+features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+
+raw-window-handle = "0.6"

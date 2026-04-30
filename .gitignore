@@ -1,0 +1,13 @@
+# Rust build artifacts
+frontend/src-tauri/target/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# Tauri generated
+frontend/src-tauri/gen/
+
+# OS
+.DS_Store
+Thumbs.db
