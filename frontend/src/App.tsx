@@ -1,12 +1,28 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useState, useEffect } from 'react'
 import './App.css'
+import {invoke} from '@tauri-apps/api/core'
 
 type StartIconProps = {
   size?: number
   color?: string
+}
+
+function TasbarIcons() {
+  const [windows, setWindows] = useState<string[]>([])
+
+  useEffect(() => {
+    invoke<string[]>('get_taskbar_windows').then(setWindows)
+  }, [])
+
+  return (
+    <div>
+      {windows.map((window, index) => (
+        <div key={index} className="taskbar-icon">
+          {window}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function StartIcon({ size = 24, color = '#fff' }: StartIconProps) {
@@ -26,11 +42,32 @@ function StartIcon({ size = 24, color = '#fff' }: StartIconProps) {
   )
 }
 
+type ClockProps = {
+  style?: React.CSSProperties
+}
+
+function Clock({ style }: ClockProps){
+  const [time, setTime] = useState(new Date().toLocaleTimeString())
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(new Date().toLocaleTimeString())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+  
+  return <div style={style}>{time}</div>
+}
+
+type OpenProcessIconProps = {
+  size?: number
+  color?: string
+}
+
 
 function App() {
   const [count, setCount] = useState(0)
 
-  
   return (
     <div className = "taskbar">
       <div className="windows-icon" 
@@ -42,7 +79,9 @@ function App() {
         }}>
 
           <StartIcon size={24} color="#fff" />
+          <TasbarIcons />
 
+          <Clock style={{position: "absolute", right: 10, top: '50%', transform: 'translateY(-50%)', color: 'white'}} />
 
       </div>
     </div>

@@ -10,7 +10,7 @@ fn register_appbar(hwnd: HWND) {
     abd.cbSize = std::mem::size_of::<APPBARDATA>() as u32;
     abd.hWnd = hwnd;
 
-    let height = 50;
+    let height = 40;
     let screen_width = unsafe { GetSystemMetrics(SM_CXSCREEN) };
 
     abd.uEdge = ABE_TOP;
@@ -46,6 +46,87 @@ fn unregister_appbar(hwnd: HWND) {
     }
 }
 
+// State we pass through LPARAM - can't capture in extern "system" fn
+struct EnumState {
+    windows: Vec<(HWND, String)>,
+}
+
+#[tauri::command]
+fn get_taskbar_windows() -> Vec<String> {
+    // collect only the String class names, drop the HWND
+    let mut state = EnumState {
+        windows: Vec::new(),
+    };
+
+    unsafe {
+        // Pass a raw pointer to our state through LPARAM
+        EnumWindows(
+            Some(enum_windows_callback),
+            LPARAM(&mut state as *mut EnumState as isize),
+        )
+        .ok();
+    }
+
+    state.windows.into_iter().map(|(_hwnd, name)| name).collect()
+}
+
+unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    // Cast LPARAM back to our state
+    let state = unsafe { &mut *(lparam.0 as *mut EnumState) };
+
+    if is_taskbar_window(hwnd) {
+        let mut class_name_buf = [0u16; 256];
+        let length = unsafe { GetClassNameW(hwnd, &mut class_name_buf) } as usize;
+        let class_name = String::from_utf16_lossy(&class_name_buf[..length]);
+
+        state.windows.push((hwnd, class_name));
+    }
+
+    TRUE //keep enumerating
+}
+
+fn is_taskbar_window(hwnd: HWND) -> bool {
+    unsafe {
+        // 1. Must be visible
+        if !IsWindowVisible(hwnd).as_bool() {
+            return false;
+        }
+
+        let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+
+        // 2. WS_EX_TOOLWINDOW explicitly removes it from the taskbar
+        if ex_style & WS_EX_TOOLWINDOW.0 != 0 {
+            return false;
+        }
+
+        // 3. WS_EX_APPWINDOW forces it onto the taskbar
+        if ex_style & WS_EX_APPWINDOW.0 != 0 {
+            return true;
+        }
+
+        // 4. Skip windows that have a visible owner (e.g. dialogs)
+        let owner = GetWindow(hwnd, GW_OWNER);
+        if owner.0 != 0 && IsWindowVisible(owner).as_bool() {
+            return false;
+        }
+
+        // 5. Skip child windows (has a parent)
+        if GetParent(hwnd).0 != 0 {
+            return false;
+        }
+
+        true
+    }
+}
+
+fn get_window_icon(hwnd: HWND) -> Option<HICON> {
+    let icon = unsafe { SendMessageW(hwnd, WM_GETICON, WPARAM(ICON_SMALL as usize), LPARAM(0)) };
+    if icon.0 != 0 {
+        return Some(HICON(icon.0 as isize));
+    }
+    None
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -75,6 +156,7 @@ fn main() {
                 }
             }
         })
+        .invoke_handler(tauri::generate_handler![get_taskbar_windows])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
