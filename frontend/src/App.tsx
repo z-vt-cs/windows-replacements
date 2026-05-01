@@ -42,6 +42,23 @@ function StartIcon({ size = 24, color = '#fff' }: StartIconProps) {
   )
 }
 
+type ClockProps = {
+  style?: React.CSSProperties
+}
+
+function Clock({ style }: ClockProps){
+  const [time, setTime] = useState(new Date().toLocaleTimeString())
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(new Date().toLocaleTimeString())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+  
+  return <div style={style}>{time}</div>
+}
+
 type OpenProcessIconProps = {
   size?: number
   color?: string
@@ -63,6 +80,8 @@ function App() {
 
           <StartIcon size={24} color="#fff" />
           <TasbarIcons />
+
+          <Clock style={{position: "absolute", right: 10, top: '50%', transform: 'translateY(-50%)', color: 'white'}} />
 
       </div>
     </div>
